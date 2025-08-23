@@ -223,28 +223,33 @@ int OpenRelTable::openRel(char *relName) {
 }
 
 int OpenRelTable::closeRel(int relId) {
-    if (relId == RELCAT_RELID || relId == ATTRCAT_RELID) {
-        return E_NOTPERMITTED;
-    }
-    if (relId < 0 || relId >= MAX_OPEN) {
-        return E_OUTOFBOUND;
-    }
-    if (tableMetaInfo[relId].free) {
-        return E_RELNOTOPEN;
-    }
+    if (relId==0 || relId==1) {/* rel-id corresponds to relation catalog or attribute catalog*/
+    return E_NOTPERMITTED;
+  }
 
-    free(RelCacheTable::relCache[relId]);
-    RelCacheTable::relCache[relId] = nullptr;
+  if (relId>=MAX_OPEN || relId<0) {/* 0 <= relId < MAX_OPEN */
+    return E_OUTOFBOUND;
+  }
 
-    AttrCacheEntry *attrNode = AttrCacheTable::attrCache[relId];
-    while (attrNode != nullptr) {
-        attrNode = attrNode->next;
-        free(AttrCacheTable::attrCache[relId]);
-        AttrCacheTable::attrCache[relId] = attrNode;
-    }
+  if (tableMetaInfo[relId].free) {/* rel-id corresponds to a free slot*/
+    return E_RELNOTOPEN;
+  }
 
-    tableMetaInfo[relId].free = true;
-    strcpy(tableMetaInfo[relId].relName, "");
+  AttrCacheEntry* head=AttrCacheTable::attrCache[relId];
+  for(AttrCacheEntry *it=head,*next;it!=NULL;it=next){
+    next=it->next;
+    free(it);
+  }
+  tableMetaInfo[relId].free=true;
+  free(RelCacheTable::relCache[relId]);
+  RelCacheTable::relCache[relId]=nullptr;
+  AttrCacheTable::attrCache[relId]=nullptr;
+  strcpy(tableMetaInfo[relId].relName, "");
 
+  // free the memory allocated in the relation and attribute caches which was
+  // allocated in the OpenRelTable::openRel() function
+
+  // update `tableMetaInfo` to set `relId` as a free slot
+  // update `relCache` and `attrCache` to set the entry at `relId` to nullptr
     return SUCCESS;
 }
