@@ -222,34 +222,97 @@ int OpenRelTable::openRel(char *relName) {
     return relId;
 }
 
+// int OpenRelTable::closeRel(int relId) {
+//     if (relId==0 || relId==1) {/* rel-id corresponds to relation catalog or attribute catalog*/
+//     return E_NOTPERMITTED;
+//   }
+
+//   if (relId>=MAX_OPEN || relId<0) {/* 0 <= relId < MAX_OPEN */
+//     return E_OUTOFBOUND;
+//   }
+
+//   if (tableMetaInfo[relId].free) {/* rel-id corresponds to a free slot*/
+//     return E_RELNOTOPEN;
+//   }
+
+//   AttrCacheEntry* head=AttrCacheTable::attrCache[relId];
+//   for(AttrCacheEntry *it=head,*next;it!=NULL;it=next){
+//     next=it->next;
+//     free(it);
+//   }
+//   tableMetaInfo[relId].free=true;
+//   free(RelCacheTable::relCache[relId]);
+//   RelCacheTable::relCache[relId]=nullptr;
+//   AttrCacheTable::attrCache[relId]=nullptr;
+//   strcpy(tableMetaInfo[relId].relName, "");
+
+//   // free the memory allocated in the relation and attribute caches which was
+//   // allocated in the OpenRelTable::openRel() function
+
+//   // update `tableMetaInfo` to set `relId` as a free slot
+//   // update `relCache` and `attrCache` to set the entry at `relId` to nullptr
+//     return SUCCESS;
+// }
 int OpenRelTable::closeRel(int relId) {
-    if (relId==0 || relId==1) {/* rel-id corresponds to relation catalog or attribute catalog*/
-    return E_NOTPERMITTED;
-  }
+  // confirm that rel-id fits the following conditions
+  //     2 <=relId < MAX_OPEN
+  //     does not correspond to a free slot
+  //  (you have done this already)
+        if (relId==0 || relId==1) {
+            return E_NOTPERMITTED;
+        }
 
-  if (relId>=MAX_OPEN || relId<0) {/* 0 <= relId < MAX_OPEN */
-    return E_OUTOFBOUND;
-  }
+        if (relId>=MAX_OPEN || relId<0) {
+            return E_OUTOFBOUND;
+        }
 
-  if (tableMetaInfo[relId].free) {/* rel-id corresponds to a free slot*/
-    return E_RELNOTOPEN;
-  }
+        if (tableMetaInfo[relId].free) {
+            return E_RELNOTOPEN;
+        }
+  /****** Releasing the Relation Cache entry of the relation ******/
 
-  AttrCacheEntry* head=AttrCacheTable::attrCache[relId];
-  for(AttrCacheEntry *it=head,*next;it!=NULL;it=next){
-    next=it->next;
-    free(it);
+  if (RelCacheTable::relCache[relId]->dirty/* RelCatEntry of the relId-th Relation Cache entry has been modified */)
+  {
+
+    /* Get the Relation Catalog entry from RelCacheTable::relCache
+    Then convert it to a record using RelCacheTable::relCatEntryToRecord(). */
+    RelCatEntry relCatBuf;
+    RelCacheTable::getRelCatEntry(relId,&relCatBuf);
+
+    Attribute record[RELCAT_NO_ATTRS];
+    RelCacheTable::relCatEntryToRecord(&relCatBuf,record);
+    RecBuffer relCatBlock(RelCacheTable::relCache[relId]->recId.block);
+    relCatBlock.setRecord(record,RelCacheTable::relCache[relId]->recId.slot);
+
+    // declaring an object of RecBuffer class to write back to the buffer
+    // Write back to the buffer using relCatBlock.setRecord() with recId.slot
   }
-  tableMetaInfo[relId].free=true;
   free(RelCacheTable::relCache[relId]);
-  RelCacheTable::relCache[relId]=nullptr;
-  AttrCacheTable::attrCache[relId]=nullptr;
-  strcpy(tableMetaInfo[relId].relName, "");
+  RelCacheTable::relCache[relId]=NULL;
+  AttrCacheEntry *attr=AttrCacheTable::attrCache[relId];
+  AttrCacheEntry*next=NULL;
+  while(attr!=NULL){
+    next=attr->next;
+    free(attr);
+    attr=next;
+  }
+  AttrCacheTable::attrCache[relId]=NULL;
 
-  // free the memory allocated in the relation and attribute caches which was
+  /****** Releasing the Attribute Cache entry of the relation ******/
+
+  // free the memory allocated in the attribute caches which was
   // allocated in the OpenRelTable::openRel() function
 
-  // update `tableMetaInfo` to set `relId` as a free slot
-  // update `relCache` and `attrCache` to set the entry at `relId` to nullptr
-    return SUCCESS;
+  // (because we are not modifying the attribute cache at this stage,
+  // write-back is not required. We will do it in subsequent
+  // stages when it becomes needed)
+
+
+  /****** Set the Open Relation Table entry of the relation as free ******/
+
+  // update `metainfo` to set `relId` as a free slot
+  tableMetaInfo[relId].free=true;
+  strcpy(tableMetaInfo[relId].relName,"");
+
+  return SUCCESS;
 }

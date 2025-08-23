@@ -6,7 +6,7 @@
 
 int Schema::openRel(char relName[ATTR_SIZE]) {
   int ret = OpenRelTable::openRel(relName);
-  if(ret >= 0 && ret<MAX_OPEN){
+  if(ret >= 0){
     return SUCCESS;
   }
   return ret;
