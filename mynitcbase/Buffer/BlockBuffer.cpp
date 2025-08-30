@@ -78,7 +78,7 @@ int BlockBuffer::loadBlockAndGetBufferPtr(unsigned char **buffPtr) {
                 StaticBuffer::metainfo[i].timeStamp += 1;
             }  
         }
-    StaticBuffer::metainfo[bufferNum].timeStamp==0;
+    StaticBuffer::metainfo[bufferNum].timeStamp=0;
   }
 
   if (bufferNum == E_BLOCKNOTINBUFFER) {
@@ -287,4 +287,21 @@ int RecBuffer::setSlotMap(unsigned char *slotMap) {
 int BlockBuffer::getBlockNum(){
     return this->blockNum;
     //return corresponding block number.
+}
+
+//stage-8 
+
+void BlockBuffer::releaseBlock(){
+    if(this->blockNum==INVALID_BLOCKNUM || StaticBuffer::blockAllocMap[this->blockNum]==UNUSED_BLK)
+{
+  return;
+}
+  int buffNum=StaticBuffer::getBufferNum(this->blockNum);
+  if(buffNum!=E_BLOCKNOTINBUFFER){
+    StaticBuffer::metainfo[buffNum].free=true;
+    StaticBuffer::blockAllocMap[this->blockNum]=UNUSED_BLK;
+    this->blockNum=INVALID_BLOCKNUM;
+    return;
+  }
+
 }
