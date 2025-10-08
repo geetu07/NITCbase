@@ -113,7 +113,7 @@ int Schema::createRel(char relName[],int nAttrs, char attrs[][ATTR_SIZE],int att
     strcpy(relNameAsAttribute.sVal,relName);
     RecId targetRelId;
     RelCacheTable::resetSearchIndex(RELCAT_RELID);
-    targetRelId=BlockAccess::linearSearch(RELCAT_RELID,RELCAT_ATTR_RELNAME,relNameAsAttribute,EQ);
+    targetRelId=BlockAccess::linearSearch(RELCAT_RELID,(char *)RELCAT_ATTR_RELNAME,relNameAsAttribute,EQ);
     // copy the relName into relNameAsAttribute.sVal
 
     // declare a variable targetRelId of type RecId

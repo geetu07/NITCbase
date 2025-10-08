@@ -1,5 +1,3 @@
-#include "BlockAccess.h"
-
 #include <cstring>
 #include <iostream>
 #include "BlockAccess.h"
@@ -32,7 +30,6 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
         Attribute recordEntry[relCatBuf.numAttrs];
         HeadInfo header;
 
-        recBuffer.getRecord(recordEntry, slot);
         recBuffer.getHeader(&header);
         unsigned char slotMap[header.numSlots];
         recBuffer.getSlotMap(slotMap);
@@ -49,6 +46,7 @@ RecId BlockAccess::linearSearch(int relId, char attrName[ATTR_SIZE], union Attri
             continue;
         }
 
+        recBuffer.getRecord(recordEntry, slot);
         AttrCatEntry attrCatBuf;
         int ret = AttrCacheTable::getAttrCatEntry(relId, attrName, &attrCatBuf);
         Attribute currRecordAttr = recordEntry[attrCatBuf.offset];
@@ -350,15 +348,15 @@ int BlockAccess::insert(int relId, Attribute *record) {
 }
 
 //stage 8
-int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op) {
-    //RelCacheTable::resetSearchIndex(relId);
-    RecId recId=linearSearch(relId,attrName,attrVal,op);
-    if(recId.block==-1 && recId.slot==-1)
-        return E_NOTFOUND;
-    RecBuffer blck(recId.block);
-    blck.getRecord(record,recId.slot);
-    return SUCCESS;
-}
+// int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op) {
+//     //RelCacheTable::resetSearchIndex(relId);
+//     RecId recId=linearSearch(relId,attrName,attrVal,op);
+//     if(recId.block==-1 && recId.slot==-1)
+//         return E_NOTFOUND;
+//     RecBuffer blck(recId.block);
+//     blck.getRecord(record,recId.slot);
+//     return SUCCESS;
+// }
 int BlockAccess::deleteRelation(char relName[ATTR_SIZE]) {
     if(strcmp(relName,RELCAT_RELNAME)==0 || strcmp(relName,ATTRCAT_RELNAME)==0){
         return E_NOTPERMITTED;
@@ -578,6 +576,53 @@ int BlockAccess::project(int relId, Attribute *record) {
     blk.getRecord(record,nextRecId.slot);
     /* Copy the record with record id (nextRecId) to the record buffer (record)
        For this Instantiate a RecBuffer class object by passing the recId and
+       call the appropriate method to fetch the record
+    */
+
+    return SUCCESS;
+}
+
+
+//stage 10
+int BlockAccess::search(int relId, Attribute *record, char attrName[ATTR_SIZE], Attribute attrVal, int op) {
+    // Declare a variable called recid to store the searched record
+    RecId recId;
+    AttrCatEntry attrcatEntry;
+    int ret=AttrCacheTable::getAttrCatEntry(relId,attrName,&attrcatEntry);
+    if(ret!=SUCCESS)return ret;
+
+    /* get the attribute catalog entry from the attribute cache corresponding
+    to the relation with Id=relid and with attribute_name=attrName  */
+
+    // if this call returns an error, return the appropriate error code
+    int rootblck=attrcatEntry.rootBlock;
+
+    // get rootBlock from the attribute catalog entry
+    /* if Index does not exist for the attribute (check rootBlock == -1) */
+    if(rootblck==-1) {
+        /* search for the record id (recid) corresponding to the attribute with
+           attribute name attrName, with value attrval and satisfying the
+           condition op using linearSearch()
+        */
+        recId=BlockAccess::linearSearch(relId,attrName,attrVal,op);
+    }
+    else{
+        // (index exists for the attribute)
+        recId = BPlusTree::bPlusSearch(relId, attrName, attrVal, op);
+        /* search for the record id (recid) correspoding to the attribute with
+        attribute name attrName and with value attrval and satisfying the
+        condition op using BPlusTree::bPlusSearch() */
+    }
+
+
+    // if there's no record satisfying the given condition (recId = {-1, -1})
+    //     return E_NOTFOUND;
+    if(recId.block==-1 && recId.slot==-1)return E_NOTFOUND;
+    RecBuffer rec(recId.block);
+    rec.getRecord(record,recId.slot);
+
+    /* Copy the record with record id (recId) to the record buffer (record).
+       For this, instantiate a RecBuffer class object by passing the recId and
        call the appropriate method to fetch the record
     */
 
