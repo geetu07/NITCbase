@@ -52,59 +52,6 @@ int Schema::renameAttr(char *relName, char *oldAttrName, char *newAttrName) {
   return retVal;
 }
 
-//stage-8
-
-// int Schema::createRel(char relName[],int nAttrs, char attrs[][ATTR_SIZE],int attrtype[]){
-
-//     Attribute relNameAsAttribute;
-//     strcpy(relNameAsAttribute.sVal,relName);
-
-//     // declare a variable targetRelId of type RecId
-//     RecId targetRelId={-1,-1};
-//     RelCacheTable::resetSearchIndex(RELCAT_RELID);
-//     targetRelId=BlockAccess::linearSearch(RELCAT_RELID,(char *)RELCAT_ATTR_RELNAME,relNameAsAttribute,EQ);
-//     if(targetRelId.block!=-1 && targetRelId.slot!=-1)
-//       return E_RELEXIST;
-
-//     for(int i=0;i<nAttrs-1;i++){
-//       for(int j=i+1;j<nAttrs;j++){
-//         if(strcmp(attrs[i],attrs[j])==0)
-//           return E_DUPLICATEATTR;
-//       }
-//     }
-
-//     Attribute relCatRecord[RELCAT_NO_ATTRS];
-//     strcpy(relCatRecord[RELCAT_REL_NAME_INDEX].sVal,relName);
-//     relCatRecord[RELCAT_NO_ATTRIBUTES_INDEX].nVal=nAttrs;
-//     relCatRecord[RELCAT_NO_RECORDS_INDEX].nVal=0;
-//     relCatRecord[RELCAT_FIRST_BLOCK_INDEX].nVal=-1;
-//     relCatRecord[RELCAT_LAST_BLOCK_INDEX].nVal=-1;
-//     relCatRecord[RELCAT_NO_SLOTS_PER_BLOCK_INDEX].nVal=floor((2016/(16*nAttrs+1)));
-
-//     int retVal = BlockAccess::insert(RELCAT_RELID,relCatRecord);
-//     if(retVal!=SUCCESS)
-//       return retVal;
-
-//     for(int i=0;i<nAttrs;i++)
-//     {
-//       Attribute attrCatRecord[ATTRCAT_NO_ATTRS];
-//       strcpy(attrCatRecord[ATTRCAT_REL_NAME_INDEX].sVal,relName);
-//       strcpy(attrCatRecord[ATTRCAT_ATTR_NAME_INDEX].sVal,attrs[i]);
-//       attrCatRecord[ATTRCAT_ATTR_TYPE_INDEX].nVal=attrtype[i];
-//       attrCatRecord[ATTRCAT_OFFSET_INDEX].nVal=i;
-//       attrCatRecord[ATTRCAT_PRIMARY_FLAG_INDEX].nVal=-1;
-//       attrCatRecord[ATTRCAT_ROOT_BLOCK_INDEX].nVal=-1;
-      
-//       retVal = BlockAccess::insert(ATTRCAT_RELID,attrCatRecord);
-//         if(retVal!=SUCCESS){
-//           Schema::deleteRel(relName);
-//           return E_DISKFULL;
-//         }
-        
-//     }
-
-//     return SUCCESS;
-// }
 
 int Schema::createRel(char relName[],int nAttrs, char attrs[][ATTR_SIZE],int attrtype[]){
 
@@ -150,14 +97,7 @@ int Schema::createRel(char relName[],int nAttrs, char attrs[][ATTR_SIZE],int att
     relCatRecord[RELCAT_FIRST_BLOCK_INDEX].nVal=-1;
     relCatRecord[RELCAT_LAST_BLOCK_INDEX].nVal=-1;
     relCatRecord[RELCAT_NO_SLOTS_PER_BLOCK_INDEX].nVal=floor((2016 / (16 * nAttrs + 1)));
-    // fill relCatRecord fields as given below
-    // offset RELCAT_REL_NAME_INDEX: relName
-    // offset RELCAT_NO_ATTRIBUTES_INDEX: numOfAttributes
-    // offset RELCAT_NO_RECORDS_INDEX: 0
-    // offset RELCAT_FIRST_BLOCK_INDEX: -1
-    // offset RELCAT_LAST_BLOCK_INDEX: -1
-    // offset RELCAT_NO_SLOTS_PER_BLOCK_INDEX: floor((2016 / (16 * nAttrs + 1)))
-    // (number of slots is calculated as specified in the physical layer docs)
+   
     int retVal=BlockAccess::insert(RELCAT_RELID,relCatRecord);
     if(retVal<0){
       return retVal;
@@ -225,4 +165,41 @@ int Schema::deleteRel(char *relName) {
        correct, it should not reach that point. That error could only occur
        if the BlockBuffer was initialized with an invalid block number.
     */
+}
+
+//stage 11
+
+int Schema::createIndex(char relName[ATTR_SIZE],char attrName[ATTR_SIZE]){
+
+    if(strcmp(relName,RELCAT_RELNAME)==0 || strcmp(relName,ATTRCAT_RELNAME)==0)
+      return E_NOTPERMITTED;
+    
+    int relId=OpenRelTable::getRelId(relName);
+    if(relId==E_RELNOTOPEN)return E_RELNOTOPEN;
+
+    return BPlusTree::bPlusCreate(relId, attrName);
+}
+
+int Schema::dropIndex(char *relName, char *attrName) {
+    if(strcmp(relName,RELCAT_RELNAME)==0 || strcmp(relName,ATTRCAT_RELNAME)==0)
+      return E_NOTPERMITTED;
+    
+    int relId=OpenRelTable::getRelId(relName);
+    if(relId==E_RELNOTOPEN)return E_RELNOTOPEN;
+
+    AttrCatEntry attrCatEntry;
+    int ret=AttrCacheTable::getAttrCatEntry(relId,attrName,&attrCatEntry);
+    if(ret!=SUCCESS)return E_ATTRNOTEXIST;
+
+
+    int rootBlock = attrCatEntry.rootBlock;
+
+    if (rootBlock == -1) {
+        return E_NOINDEX;
+    }
+
+    BPlusTree::bPlusDestroy(rootBlock);
+    attrCatEntry.rootBlock=-1;
+    AttrCacheTable::setAttrCatEntry(relId,attrName,&attrCatEntry);
+    return SUCCESS;
 }

@@ -273,6 +273,30 @@ int OpenRelTable::closeRel(int relId) {
     // declaring an object of RecBuffer class to write back to the buffer
     // Write back to the buffer using relCatBlock.setRecord() with recId.slot
   }
+
+  /****** Releasing the Attribute Cache entry of the relation ******/
+
+    // for all the entries in the linked list of the relIdth Attribute Cache entry.
+    for(AttrCacheEntry *entry=AttrCacheTable::attrCache[relId];entry!=NULL;entry=entry->next){
+        if(entry->dirty==true)
+        {
+            /* Get the Attribute Catalog entry from attrCache
+             Then convert it to a record using AttrCacheTable::attrCatEntryToRecord().
+             Write back that entry by instantiating RecBuffer class. Use recId
+             member field and recBuffer.setRecord() */
+             AttrCatEntry attrCatEntry;
+             attrCatEntry=entry->attrCatEntry;
+             Attribute record[ATTRCAT_NO_ATTRS];
+             AttrCacheTable::attrCatEntryToRecord(&attrCatEntry,record);
+             RecBuffer attrCatBlock(entry->recId.block);
+             attrCatBlock.setRecord(record,entry->recId.slot);
+        }
+    }
+
+    /****** Updating metadata in the Open Relation Table of the relation  ******/
+
+    //free the relIdth entry of the tableMetaInfo.
+
   free(RelCacheTable::relCache[relId]);
   RelCacheTable::relCache[relId]=NULL;
   AttrCacheEntry *attr=AttrCacheTable::attrCache[relId];

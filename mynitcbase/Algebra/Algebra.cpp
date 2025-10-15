@@ -41,7 +41,7 @@ int Algebra::insert(char relName[ATTR_SIZE], int nAttrs, char record[][ATTR_SIZE
             if (isNumber(record[i]))
             {
                 recordValues[i].nVal = atof(record[i]);
-                cout<<record[i];
+                //cout<<record[i];
             }
             else
             {
@@ -122,6 +122,7 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
     RelCacheTable::resetSearchIndex(srcRelId);
     RelCacheTable::resetSearchIndex(targetRelId);
     AttrCacheTable::resetSearchIndex(srcRelId, attr);
+    StaticBuffer::count=0;
     ret = BlockAccess::search(srcRelId, record, attr, attrVal, op);
     while (ret==SUCCESS) 
     {
@@ -135,7 +136,8 @@ int Algebra::select(char srcRel[ATTR_SIZE], char targetRel[ATTR_SIZE], char attr
         ret = BlockAccess::search(srcRelId, record, attr, attrVal, op);
     }
     Schema::closeRel(targetRel);
-    cout<<StaticBuffer::count;
+    //cout<<StaticBuffer::count;
+    StaticBuffer::count=0;
     return SUCCESS;
 }
 
