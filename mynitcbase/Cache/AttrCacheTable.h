@@ -40,6 +40,8 @@ class AttrCacheTable {
   static int resetSearchIndex(int relId, char attrName[ATTR_SIZE]);
   static int resetSearchIndex(int relId, int attrOffset);
 
+  static int getOffset(int relId, char attrName[ATTR_SIZE]);
+
  private:
   // field
   static AttrCacheEntry *attrCache[MAX_OPEN];
