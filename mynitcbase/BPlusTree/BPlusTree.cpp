@@ -373,7 +373,7 @@ int BPlusTree::findLeafToInsert(int rootBlock, Attribute attrVal, int attrType) 
         int i=0;
         while(i<intHead.numEntries){
             internalblk.getEntry(&intEntry,i);
-            int cmpv=compareAttrs(intEntry.attrVal,attrVal,attrType);
+            int cmpv=compareAttrs(attrVal,intEntry.attrVal,attrType);
             if(cmpv<=0)break;
             i++;
         }
